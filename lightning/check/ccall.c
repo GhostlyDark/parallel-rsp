@@ -132,16 +132,6 @@
 #  define _l15			_w15
 #endif
 
-#ifndef jit_arg_uc
-#  define jit_arg_uc		jit_arg_c
-#endif
-#ifndef jit_arg_us
-#  define jit_arg_us		jit_arg_s
-#endif
-#ifndef jit_arg_ui
-#  define jit_arg_ui		jit_arg_i
-#endif
-
 /*
  * Types
  */
@@ -634,7 +624,7 @@ main(int argc, char *argv[])
 #define arg15(T)		arg14(T)		a15 = jit_arg##T();
 
 #define get0(B,T,R)		jit_movi##B(R##0,0);
-#define get1(B,T,R)		jit_getarg##T(R##0,a##1);
+#define get1(B,T,R)		jit_getarg##B(R##0,a##1);
 #define get2(B,T,R)							\
 	get1(B,T,R);							\
 	jit_movr##B(R##1, R##0);					\
@@ -717,7 +707,7 @@ main(int argc, char *argv[])
     n##T##N = jit_name(strfy(n##T##N));					\
     jit_note("ccall.c", __LINE__);					\
     jit_prolog();							\
-    arg##N(T);								\
+    arg##N();								\
     get##N(,T,JIT_R)							\
     jit_extr##T(JIT_R0, JIT_R0);					\
     jit_retr(JIT_R0);							\
@@ -787,7 +777,7 @@ main(int argc, char *argv[])
 
 #define calin(T,N)							\
 	jit_prepare();							\
-		push##N(T)						\
+		push##N()						\
 	jit_finishi(C##T##N);						\
 	jit_retval##T(JIT_R0);						\
 	jmp = jit_beqi(JIT_R0, T##N);					\
@@ -836,7 +826,7 @@ main(int argc, char *argv[])
 #undef calfn
 #define calin(T,N)							\
 	jit_prepare();							\
-		push##N(T)						\
+		push##N()						\
 	jit_finishi(CJ##T##N);						\
 	jit_retval##T(JIT_R0);						\
 	jmp = jit_beqi(JIT_R0, T##N);					\
