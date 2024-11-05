@@ -2,6 +2,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #else
+#include <unistd.h>
 #include <sys/mman.h>
 #endif
 #include <limits>
@@ -13,7 +14,11 @@ namespace RSP
 {
 namespace JIT
 {
+#ifdef IOS // iOS/tvOS is 64bit but does not allow an infinite amount of VA space
+static constexpr bool huge_va = false;
+#else
 static constexpr bool huge_va = std::numeric_limits<size_t>::max() > 0x100000000ull;
+#endif
 // On 64-bit systems, we will never allocate more than one block, this is important since we must ensure that
 // relative jumps are reachable in 32-bits.
 // We won't actually allocate 1 GB on 64-bit, but just reserve VA space for it, which we have basically an infinite amount of.
@@ -31,7 +36,12 @@ Allocator::~Allocator()
 
 static size_t align_page(size_t offset)
 {
-	return (offset + 4095) & ~size_t(4095);
+#if defined(__APPLE__) && defined(__aarch64__)
+	size_t pagesize = sysconf(_SC_PAGESIZE) - 1;
+#else
+	size_t pagesize = 4095;
+#endif
+	return (offset + pagesize) & ~size_t(pagesize);
 }
 
 static bool commit_read_write(void *ptr, size_t size)
