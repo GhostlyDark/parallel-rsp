@@ -1,8 +1,13 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_C_STANDARD 99)
 project(parallel-rsp LANGUAGES CXX C)
 
+option(CONFIG_GUI "Enables Qt configuration GUI)" OFF)
+
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
 
 set(NAME_PLUGIN_M64P "mupen64plus-rsp-parallel")
 
@@ -11,15 +16,13 @@ add_definitions(-DM64P_PLUGIN_API)
 add_definitions(-DPARALLEL_INTEGRATION)
 
 # check for INTERPROCEDURAL_OPTIMIZATION support
-if((${CMAKE_VERSION} VERSION_EQUAL 3.9) OR (${CMAKE_VERSION} VERSION_GREATER 3.9))
-    cmake_policy(SET CMP0069 NEW)
+cmake_policy(SET CMP0069 NEW)
 
-    include(CheckIPOSupported)
-    check_ipo_supported(RESULT ENABLE_IPO)
-    if(ENABLE_IPO)
-        message("Interprocedural optimizations enabled")
-    endif(ENABLE_IPO)
-endif()
+include(CheckIPOSupported)
+check_ipo_supported(RESULT ENABLE_IPO)
+if(ENABLE_IPO)
+    message("Interprocedural optimizations enabled")
+endif(ENABLE_IPO)
 
 if(ENABLE_IPO AND (CMAKE_BUILD_TYPE STREQUAL "Release"))
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
@@ -31,7 +34,15 @@ elseif (MSVC)
     set(PARALLEL_RSP_CXX_FLAGS /D_CRT_SECURE_NO_WARNINGS /wd4267 /wd4244 /wd4309 /wd4005 /MP /DNOMINMAX)
 endif()
 
-add_library(${NAME_PLUGIN_M64P} SHARED
+if (CONFIG_GUI)
+    set(CMAKE_AUTOMOC ON)
+    set(CMAKE_AUTORCC ON)
+    set(CMAKE_AUTOUIC ON)
+
+    find_package(Qt6 COMPONENTS Gui Widgets Core REQUIRED)
+endif(CONFIG_GUI)
+
+set(PARALLEL_SOURCES
 		parallel.cpp
 		rsp/vfunctions.cpp
 		rsp_jit.cpp rsp_jit.hpp
@@ -69,7 +80,24 @@ add_library(${NAME_PLUGIN_M64P} SHARED
 		arch/simd/rsp/vsub.h
 		arch/simd/rsp/vsubc.h
 		arch/simd/rsp/vxor.h
-		arch/simd/rsp/vmulm.h)
+		arch/simd/rsp/vmulm.h
+)
+
+if (CONFIG_GUI)
+    list(APPEND PARALLEL_SOURCES
+        UserInterface/MainDialog.cpp
+        UserInterface/MainDialog.ui
+    )
+    add_definitions(-DCONFIG_GUI)
+endif(CONFIG_GUI)
+
+add_library(${NAME_PLUGIN_M64P} SHARED
+    ${PARALLEL_SOURCES}
+)
+
+if (CONFIG_GUI)
+    target_link_libraries(${NAME_PLUGIN_M64P} PUBLIC Qt6::Gui Qt6::Widgets)
+endif(CONFIG_GUI)
 
 set_target_properties(${NAME_PLUGIN_M64P} PROPERTIES PREFIX "")
 target_include_directories(${NAME_PLUGIN_M64P} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
